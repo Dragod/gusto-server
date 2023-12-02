@@ -246,20 +246,197 @@ const routes = (app) => {
 		}
 	);
 
+	async function insertDish(dish, categoryId, tags, businessId) {
+		try {
+			// Ensure dish.isPizza is a boolean value
+			const isPizza = Boolean(dish.isPizza);
+
+			let dishResult = await new Promise((resolve, reject) => {
+				db.run(
+					'INSERT INTO menu (name, description, price, is_pizza, category_id) VALUES (?, ?, ?, ?, ?)',
+					[dish.name, dish.description, dish.price, isPizza, categoryId],
+					function (err) {
+						if (err) {
+							return reject(err);
+						}
+						resolve(this);
+					}
+				);
+			});
+
+			// Fetch the id of each tag from the tags table and insert into the menu_tags table
+			if (tags && tags.length > 0) {
+				// Check if tags are provided
+				for (const tag of tags) {
+					const tagResult = await db.get('SELECT id FROM tags WHERE tag_name = ?', [tag]);
+
+					if (!tagResult) {
+						throw new Error(`Tag ${tag} does not exist`);
+					}
+
+					await db.run('INSERT INTO menu_tags (menu_id, tag_id) VALUES (?, ?)', [
+						dishResult.lastID,
+						tagResult.id
+					]);
+				}
+			}
+
+			console.log(`businessId: ${businessId}, dishResult.lastID: ${dishResult.lastID}`);
+
+			//To ensure that the changes are committed to the database, using the `db.serialize` method to run your queries in a serialized manner.
+
+			try {
+				await new Promise((resolve, reject) => {
+					db.serialize(() => {
+						db.run('BEGIN TRANSACTION');
+						db.run(
+							'INSERT INTO business_menu (business_id, menu_id) VALUES (?, ?)',
+							[businessId, dishResult.lastID],
+							(err) => {
+								if (err) {
+									return reject(err);
+								}
+								db.run('COMMIT');
+								resolve();
+							}
+						);
+					});
+				});
+			} catch (error) {
+				console.error('Error running INSERT INTO business_menu query:', error);
+				db.run('ROLLBACK');
+			}
+
+			// Insert the business_id and category_id into the business_categories table
+			// Ignore the error if the business is already associated with the category
+			await db.run(
+				'INSERT OR IGNORE INTO business_categories (business_id, category_id) VALUES (?, ?)',
+				[businessId, categoryId]
+			);
+		} catch (error) {
+			console.error(error);
+			throw error;
+		}
+	}
+
 	app.post('/data/admin/menu', async (req, res) => {
-		const { name, description, price, isPizza, categoryId, businessId } = req.body;
+		if (!req.body || typeof req.body !== 'object') {
+			return res.status(400).send({ error: 'Invalid request body' });
+		}
+
+		const {
+			name,
+			description,
+			price,
+			isPizza = false,
+			categoryId,
+			tags,
+			businessId
+		} = req.body;
+
+		if (!name || !description || !price || !categoryId || !businessId) {
+			return res.status(400).send({ error: 'Missing required fields' });
+		}
+
+		const dish = { name, description, price, is_pizza: Boolean(isPizza) };
 
 		try {
-			await db.run(
-				'INSERT INTO menu(name, description, price, is_pizza, category_id, business_id) VALUES(?, ?, ?, ?, ?, ?)',
-				[name, description, price, isPizza, categoryId, businessId]
-			);
-			res.json({ message: 'Dish inserted successfully' });
-		} catch (err) {
-			console.error(err);
-			res.status(500).json({ message: 'Error inserting dish' });
+			await insertDish(dish, categoryId, tags, businessId);
+			res.status(200).send({ message: 'Dish inserted successfully' });
+		} catch (error) {
+			console.error(error);
+			res.status(500).send({ error: 'An error occurred while inserting the dish' });
 		}
 	});
+
+	app.get('/data/admin/business_categories', (req, res) => {
+		let businessId = req.query.business || 1;
+		db.all(
+			`SELECT categories.category_name
+				FROM business_categories
+				JOIN categories ON business_categories.category_id = categories.id
+				WHERE business_categories.business_id = ${businessId};`,
+			(err, result) => {
+				if (err) {
+					res.status(500).send(err);
+				} else {
+					const jsonResult = JSON.stringify(result);
+					res.status(200).send(jsonResult);
+					console.log(jsonResult);
+				}
+			}
+		);
+	});
+
+	app.get('/data/admin/tags', (req, res) => {
+		db.all(`SELECT * FROM tags`, (err, result) => {
+			if (err) {
+				res.status(500).send(err);
+			} else {
+				const jsonResult = JSON.stringify(result);
+				res.status(200).send(jsonResult);
+				console.log(jsonResult);
+			}
+		});
+	});
+
+	app.get('/data/admin/catIdFromCatName', (req, res) => {
+		let catName = decodeURIComponent(req.query.category_name);
+		db.all(`SELECT id FROM categories WHERE category_name = ?;`, [catName], (err, result) => {
+			if (err) {
+				res.status(500).send(err);
+			} else {
+				res.status(200).json(result);
+				console.log(result);
+			}
+		});
+	});
+
+	// app.post('/data/admin/menu', async (req, res) => {
+	// 	if (!req.body || typeof req.body !== 'object') {
+	// 		return res.status(400).send({ error: 'Invalid request body' });
+	// 	}
+
+	// 	const { dish, categoryName, tags, businessId } = req.body;
+
+	// 	if (!dish) {
+	// 		return res.status(400).send({ error: 'Missing dish field' });
+	// 	}
+
+	// 	if (!categoryName) {
+	// 		return res.status(400).send({ error: 'Missing categoryName field' });
+	// 	}
+
+	// 	if (!tags) {
+	// 		return res.status(400).send({ error: 'Missing tags field' });
+	// 	}
+
+	// 	if (!businessId) {
+	// 		return res.status(400).send({ error: 'Missing businessId field' });
+	// 	}
+
+	// 	try {
+	// 		await insertDish(dish, categoryName, tags, businessId);
+	// 		res.status(200).send({ message: 'Dish inserted successfully' });
+	// 	} catch (error) {
+	// 		console.error(error);
+	// 		res.status(500).send({ error: 'An error occurred while inserting the dish' });
+	// 	}
+	// });
+	// app.post('/data/admin/menu', async (req, res) => {
+	// 	const { name, description, price, isPizza, categoryId, businessId } = req.body;
+
+	// 	try {
+	// 		await db.run(
+	// 			'INSERT INTO menu(name, description, price, is_pizza, category_id, business_id) VALUES(?, ?, ?, ?, ?, ?)',
+	// 			[name, description, price, isPizza, categoryId, businessId]
+	// 		);
+	// 		res.json({ message: 'Dish inserted successfully' });
+	// 	} catch (err) {
+	// 		console.error(err);
+	// 		res.status(500).json({ message: 'Error inserting dish' });
+	// 	}
+	// });
 
 	app.delete('/data/admin/menu/:id', async (req, res) => {
 		try {
