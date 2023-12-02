@@ -8,189 +8,138 @@ const routes = (app) => {
 		res.send('Hello, World!');
 	});
 
-	// SELECT menu.id, menu.name, menu.description, menu.price, menu.is_pizza, categories.category_name
-	//         FROM menu
-	//         JOIN categories ON menu.category_id = categories.id
-	//         ORDER BY menu.category_id;
+	function getMenuQuery(businessId, orderBy) {
+		let menuQuery = `SELECT menu.id, menu.name, menu.description, menu.price, menu.is_pizza, categories.category_name, GROUP_CONCAT(tags.tag_name) as tags
+        FROM menu
+        JOIN categories ON menu.category_id = categories.id
+        LEFT JOIN menu_tags ON menu.id = menu_tags.menu_id
+        LEFT JOIN tags ON menu_tags.tag_id = tags.id
+        JOIN business_menu ON menu.id = business_menu.menu_id
+        WHERE business_menu.business_id = ${businessId}
+        GROUP BY menu.id, menu.name, menu.description, menu.price, menu.is_pizza, categories.category_name
+        ${orderBy}`;
+
+		return menuQuery;
+	}
 
 	app.get('/data/admin/menu', (req, res) => {
-		db.all(
-			`	SELECT menu.id, menu.name, menu.description, menu.price, menu.is_pizza, categories.category_name, GROUP_CONCAT(tags.tag_name) as tags
-				FROM menu
-				JOIN categories ON menu.category_id = categories.id
-				LEFT JOIN menu_tags ON menu.id = menu_tags.menu_id
-				LEFT JOIN tags ON menu_tags.tag_id = tags.id
-				GROUP BY menu.id, menu.name, menu.description, menu.price, menu.is_pizza, categories.category_name
-				ORDER BY menu.category_id;`,
-			(err, result) => {
-				if (err) {
-					res.status(500).send(err);
-				} else {
-					const jsonResult = JSON.stringify(result);
-					res.status(200).send(jsonResult);
-				}
+		let businessId = req.query.business || 1;
+		let menuQuery = getMenuQuery(businessId, 'ORDER BY categories.id');
+		db.all(menuQuery, (err, result) => {
+			if (err) {
+				res.status(500).send(err);
+			} else {
+				const jsonResult = JSON.stringify(result);
+				res.status(200).send(jsonResult);
 			}
-		);
+		});
 	});
 
 	app.get('/data/admin/menu/name-asc-sort', (req, res) => {
-		db.all(
-			`SELECT menu.id, menu.name, menu.description, menu.price, menu.is_pizza, categories.category_name, GROUP_CONCAT(tags.tag_name) as tags
-			FROM menu
-			JOIN categories ON menu.category_id = categories.id
-			LEFT JOIN menu_tags ON menu.id = menu_tags.menu_id
-			LEFT JOIN tags ON menu_tags.tag_id = tags.id
-			GROUP BY menu.id, menu.name, menu.description, menu.price, menu.is_pizza, categories.category_name
-            ORDER BY menu.name ASC;`,
-			(err, result) => {
-				if (err) {
-					res.status(500).send(err);
-				} else {
-					const jsonResult = JSON.stringify(result);
-					res.status(200).send(jsonResult);
-				}
+		let businessId = req.query.business || 1;
+		let menuQuery = getMenuQuery(businessId, 'ORDER BY menu.name ASC');
+		db.all(menuQuery, (err, result) => {
+			if (err) {
+				res.status(500).send(err);
+			} else {
+				const jsonResult = JSON.stringify(result);
+				res.status(200).send(jsonResult);
 			}
-		);
+		});
 	});
 
 	app.get('/data/admin/menu/name-desc-sort', (req, res) => {
-		db.all(
-			`SELECT menu.id, menu.name, menu.description, menu.price, menu.is_pizza, categories.category_name, GROUP_CONCAT(tags.tag_name) as tags
-			FROM menu
-			JOIN categories ON menu.category_id = categories.id
-			LEFT JOIN menu_tags ON menu.id = menu_tags.menu_id
-			LEFT JOIN tags ON menu_tags.tag_id = tags.id
-			GROUP BY menu.id, menu.name, menu.description, menu.price, menu.is_pizza, categories.category_name
-			ORDER BY menu.name DESC;`,
-			(err, result) => {
-				if (err) {
-					res.status(500).send(err);
-				} else {
-					const jsonResult = JSON.stringify(result);
-					res.status(200).send(jsonResult);
-				}
+		let businessId = req.query.business || 1;
+		let menuQuery = getMenuQuery(businessId, 'ORDER BY menu.name DESC');
+		db.all(menuQuery, (err, result) => {
+			if (err) {
+				res.status(500).send(err);
+			} else {
+				const jsonResult = JSON.stringify(result);
+				res.status(200).send(jsonResult);
 			}
-		);
+		});
 	});
 
 	app.get('/data/admin/menu/highest-sort', (req, res) => {
-		db.all(
-			`SELECT menu.id, menu.name, menu.description, menu.price, menu.is_pizza, categories.category_name, GROUP_CONCAT(tags.tag_name) as tags
-			FROM menu
-			JOIN categories ON menu.category_id = categories.id
-			LEFT JOIN menu_tags ON menu.id = menu_tags.menu_id
-			LEFT JOIN tags ON menu_tags.tag_id = tags.id
-			GROUP BY menu.id, menu.name, menu.description, menu.price, menu.is_pizza, categories.category_name
-            ORDER BY menu.price DESC;`,
-			(err, result) => {
-				if (err) {
-					res.status(500).send(err);
-				} else {
-					const jsonResult = JSON.stringify(result);
-					res.status(200).send(jsonResult);
-				}
+		let businessId = req.query.business || 1;
+		let menuQuery = getMenuQuery(businessId, 'ORDER BY menu.price DESC');
+		db.all(menuQuery, (err, result) => {
+			if (err) {
+				res.status(500).send(err);
+			} else {
+				const jsonResult = JSON.stringify(result);
+				res.status(200).send(jsonResult);
 			}
-		);
+		});
 	});
 
 	app.get('/data/admin/menu/lowest-sort', (req, res) => {
-		db.all(
-			`SELECT menu.id, menu.name, menu.description, menu.price, menu.is_pizza, categories.category_name, GROUP_CONCAT(tags.tag_name) as tags
-			FROM menu
-			JOIN categories ON menu.category_id = categories.id
-			LEFT JOIN menu_tags ON menu.id = menu_tags.menu_id
-			LEFT JOIN tags ON menu_tags.tag_id = tags.id
-			GROUP BY menu.id, menu.name, menu.description, menu.price, menu.is_pizza, categories.category_name
-            ORDER BY menu.price ASC;`,
-			(err, result) => {
-				if (err) {
-					res.status(500).send(err);
-				} else {
-					const jsonResult = JSON.stringify(result);
-					res.status(200).send(jsonResult);
-				}
+		let businessId = req.query.business || 1;
+		let menuQuery = getMenuQuery(businessId, 'ORDER BY menu.price ASC');
+		db.all(menuQuery, (err, result) => {
+			if (err) {
+				res.status(500).send(err);
+			} else {
+				const jsonResult = JSON.stringify(result);
+				res.status(200).send(jsonResult);
 			}
-		);
+		});
 	});
 
 	app.get('/data/admin/menu/new-sort', (req, res) => {
-		db.all(
-			`SELECT menu.id, menu.name, menu.description, menu.price, menu.is_pizza, categories.category_name, GROUP_CONCAT(tags.tag_name) as tags
-			FROM menu
-			JOIN categories ON menu.category_id = categories.id
-			LEFT JOIN menu_tags ON menu.id = menu_tags.menu_id
-			LEFT JOIN tags ON menu_tags.tag_id = tags.id
-			GROUP BY menu.id, menu.name, menu.description, menu.price, menu.is_pizza, categories.category_name
-			ORDER BY CASE WHEN tags LIKE '%NEW%' THEN 0 ELSE 1 END, tags;`,
-			(err, result) => {
-				if (err) {
-					res.status(500).send(err);
-				} else {
-					const jsonResult = JSON.stringify(result);
-					res.status(200).send(jsonResult);
-				}
+		let businessId = req.query.business || 1;
+		let orderBynew = `ORDER BY CASE WHEN tags LIKE '%NEW%' THEN 0 ELSE 1 END, tags`;
+		let menuQuery = getMenuQuery(businessId, orderBynew);
+		db.all(menuQuery, (err, result) => {
+			if (err) {
+				res.status(500).send(err);
+			} else {
+				const jsonResult = JSON.stringify(result);
+				res.status(200).send(jsonResult);
 			}
-		);
+		});
 	});
 
 	app.get('/data/admin/menu/cer-sort', (req, res) => {
-		db.all(
-			`SELECT menu.id, menu.name, menu.description, menu.price, menu.is_pizza, categories.category_name, GROUP_CONCAT(tags.tag_name) as tags
-        FROM menu
-        JOIN categories ON menu.category_id = categories.id
-        LEFT JOIN menu_tags ON menu.id = menu_tags.menu_id
-        LEFT JOIN tags ON menu_tags.tag_id = tags.id
-        GROUP BY menu.id, menu.name, menu.description, menu.price, menu.is_pizza, categories.category_name
-        ORDER BY CASE WHEN tags LIKE '%CER%' THEN 0 ELSE 1 END, tags;`,
-			(err, result) => {
-				if (err) {
-					res.status(500).send(err);
-				} else {
-					const jsonResult = JSON.stringify(result);
-					res.status(200).send(jsonResult);
-				}
+		let businessId = req.query.business || 1;
+		let orderBycer = `ORDER BY CASE WHEN tags LIKE '%CER%' THEN 0 ELSE 1 END, tags`;
+		let menuQuery = getMenuQuery(businessId, orderBycer);
+		db.all(menuQuery, (err, result) => {
+			if (err) {
+				res.status(500).send(err);
+			} else {
+				const jsonResult = JSON.stringify(result);
+				res.status(200).send(jsonResult);
 			}
-		);
+		});
 	});
 
 	app.get('/data/admin/menu/sur-sort', (req, res) => {
-		db.all(
-			`SELECT menu.id, menu.name, menu.description, menu.price, menu.is_pizza, categories.category_name, GROUP_CONCAT(tags.tag_name) as tags
-        FROM menu
-        JOIN categories ON menu.category_id = categories.id
-        LEFT JOIN menu_tags ON menu.id = menu_tags.menu_id
-        LEFT JOIN tags ON menu_tags.tag_id = tags.id
-        GROUP BY menu.id, menu.name, menu.description, menu.price, menu.is_pizza, categories.category_name
-        ORDER BY CASE WHEN tags LIKE '%SUR%' THEN 0 ELSE 1 END, tags;`,
-			(err, result) => {
-				if (err) {
-					res.status(500).send(err);
-				} else {
-					const jsonResult = JSON.stringify(result);
-					res.status(200).send(jsonResult);
-				}
+		let businessId = req.query.business || 1;
+		let orderBysur = `ORDER BY CASE WHEN tags LIKE '%SUR%' THEN 0 ELSE 1 END, tags`;
+		let menuQuery = getMenuQuery(businessId, orderBysur);
+		db.all(menuQuery, (err, result) => {
+			if (err) {
+				res.status(500).send(err);
+			} else {
+				const jsonResult = JSON.stringify(result);
+				res.status(200).send(jsonResult);
 			}
-		);
+		});
 	});
 
 	app.get('/data/admin/menu/is-pizza', (req, res) => {
-		db.all(
-			`SELECT menu.id, menu.name, menu.description, menu.price, menu.is_pizza, categories.category_name, GROUP_CONCAT(tags.tag_name) as tags
-			FROM menu
-			JOIN categories ON menu.category_id = categories.id
-			LEFT JOIN menu_tags ON menu.id = menu_tags.menu_id
-			LEFT JOIN tags ON menu_tags.tag_id = tags.id
-			GROUP BY menu.id, menu.name, menu.description, menu.price, menu.is_pizza, categories.category_name
-            ORDER BY menu.is_pizza DESC;`,
-			(err, result) => {
-				if (err) {
-					res.status(500).send(err);
-				} else {
-					const jsonResult = JSON.stringify(result);
-					res.status(200).send(jsonResult);
-				}
+		let businessId = req.query.business || 1;
+		let menuQuery = getMenuQuery(businessId, 'ORDER BY menu.is_pizza DESC');
+		db.all(menuQuery, (err, result) => {
+			if (err) {
+				res.status(500).send(err);
+			} else {
+				const jsonResult = JSON.stringify(result);
+				res.status(200).send(jsonResult);
 			}
-		);
+		});
 	});
 
 	app.get('/data/business', (req, res) => {
@@ -258,10 +207,10 @@ const routes = (app) => {
 				// Update the menu table
 				await db.run(
 					`
-                UPDATE menu
-                SET name = ?, description = ?, price = ?, is_pizza = ?
-                WHERE id = ?
-            `,
+            UPDATE menu
+            SET name = ?, description = ?, price = ?, is_pizza = ?
+            WHERE id = ?
+        `,
 					name,
 					description,
 					price,
@@ -269,13 +218,24 @@ const routes = (app) => {
 					req.params.id
 				);
 
+				// Fetch the updated data
+				const updatedData = await db.get(
+					`
+            SELECT menu.id, menu.name, menu.description, menu.price, menu.is_pizza, categories.category_name, GROUP_CONCAT(tags.tag_name) as tags
+            FROM menu
+            JOIN categories ON menu.category_id = categories.id
+            LEFT JOIN menu_tags ON menu.id = menu_tags.menu_id
+            LEFT JOIN tags ON menu_tags.tag_id = tags.id
+            JOIN business_menu ON menu.id = business_menu.menu_id
+            WHERE menu.id = ?
+            GROUP BY menu.id, menu.name, menu.description, menu.price, menu.is_pizza, categories.category_name
+            `,
+					req.params.id
+				);
+
 				res.status(200).send({
 					message: 'Data updated successfully',
-					id: req.params.id,
-					name: name,
-					description: description,
-					price: price,
-					is_pizza: is_pizza
+					...updatedData
 				});
 			} catch (error) {
 				res.status(500).send({
