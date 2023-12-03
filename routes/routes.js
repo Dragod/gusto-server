@@ -246,6 +246,51 @@ const routes = (app) => {
 		}
 	);
 
+	app.get('/data/admin/categories/:id', (req, res) => {
+		console.log('req.params:', req.params);
+		const { id } = req.params;
+
+		db.get(`SELECT * FROM categories WHERE id = ?`, id, (err, row) => {
+			if (err) {
+				return res.status(500).json({ error: err.message });
+			}
+			if (!row) {
+				return res.status(404).json({ error: 'No category found with id: ' + id });
+			}
+			return res.json(row);
+		});
+	});
+
+	app.patch(
+		'/data/admin/categories/:id',
+		[
+			body('category_name')
+				.notEmpty()
+				.isLength({ min: 4, max: 100 })
+				.withMessage('Category name is required, and must be less than 100 characters')
+		],
+		(req, res) => {
+			const { id } = req.params;
+			const { category_name } = req.body;
+			console.log('req.params:', req.params);
+			console.log('req.body:', req.body);
+
+			db.run(
+				`UPDATE categories SET category_name = ? WHERE id = ?`,
+				[category_name, id],
+				function (err) {
+					if (err) {
+						return res.status(500).json({ error: err.message });
+					}
+					return res.json({
+						message: 'Category updated successfully',
+						changes: this.changes
+					});
+				}
+			);
+		}
+	);
+
 	async function insertDish(dish, categoryId, tags, businessId) {
 		console.log('Dish:', dish);
 		try {
