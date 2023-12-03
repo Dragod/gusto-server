@@ -264,22 +264,110 @@ const routes = (app) => {
 				);
 			});
 
-			// Fetch the id of each tag from the tags table and insert into the menu_tags table
-			if (tags && tags.length > 0) {
-				// Check if tags are provided
-				for (const tag of tags) {
-					const tagResult = await db.get('SELECT id FROM tags WHERE tag_name = ?', [tag]);
+			console.log('Tags:', tags);
 
-					if (!tagResult) {
-						throw new Error(`Tag ${tag} does not exist`);
-					}
+			// Tried to use `db.get` to fetch the id of each tag from the tags table and insert into the menu_tags table but it didn't work with `await` keyword
+			// It was returning the `Database` object instead of the expected row data
+			//The `Database {}` output indicates that the `db.get` method is not returning the expected row data. Instead, it's returning the `Database` object. This is //likely because the `await` keyword is not being used correctly with `db.get`.
 
-					await db.run('INSERT INTO menu_tags (menu_id, tag_id) VALUES (?, ?)', [
-						dishResult.lastID,
-						tagResult.id
-					]);
+			//The `db.get` method does not return a Promise, so it cannot be used with `await` directly. Instead, it uses a callback function to provide the result.
+
+			for (const tagId of tags) {
+				const tagResult = await new Promise((resolve, reject) => {
+					db.get('SELECT id FROM tags WHERE id = ?', [tagId], (err, row) => {
+						if (err) {
+							reject(err);
+						} else {
+							resolve(row);
+						}
+					});
+				});
+
+				if (!tagResult) {
+					throw new Error(`Tag with ID ${tagId} does not exist`);
+				}
+
+				console.log('Tag Result:', tagResult);
+
+				try {
+					await db.run(
+						'INSERT INTO menu_tags (menu_id, tag_id) VALUES (?, ?)',
+						[dishResult.lastID, tagResult.id],
+						function (err) {
+							if (err) {
+								console.error(
+									`Error running INSERT INTO menu_tags query for tag with ID ${tagId}:`,
+									err
+								);
+							} else {
+								console.log(`Tag with ID ${tagId} inserted successfully`);
+							}
+						}
+					);
+				} catch (error) {
+					console.error(
+						`Error running INSERT INTO menu_tags query for tag with ID ${tagId}:`,
+						error
+					);
 				}
 			}
+
+			// Fetch the id of each tag from the tags table and insert into the menu_tags table
+			// if (tags && tags.length > 0) {
+			// 	// Check if tags are provided
+			// 	for (const tagId of tags) {
+			// 		const tagResult = await db.get('SELECT id FROM tags WHERE id = ?', [tagId]);
+
+			// 		if (!tagResult) {
+			// 			throw new Error(`Tag with ID ${tagId} does not exist`);
+			// 		}
+			// 		console.log('Tag Result:', tagResult);
+
+			// 		try {
+			// 			await db.run(
+			// 				'INSERT INTO menu_tags (menu_id, tag_id) VALUES (?, ?)',
+			// 				[dishResult.lastID, tagResult.id],
+			// 				function (err) {
+			// 					if (err) {
+			// 						console.error(
+			// 							`Error running INSERT INTO menu_tags query for tag with ID ${tagId}:`,
+			// 							err
+			// 						);
+			// 					} else {
+			// 						console.log(`Tag with ID ${tagId} inserted successfully`);
+			// 					}
+			// 				}
+			// 			);
+			// 		} catch (error) {
+			// 			console.error(
+			// 				`Error running INSERT INTO menu_tags query for tag with ID ${tagId}:`,
+			// 				error
+			// 			);
+			// 		}
+
+			// 		try {
+			// 			await db.run(
+			// 				'INSERT INTO menu_tags (menu_id, tag_id) VALUES (?, ?)',
+			// 				[dishResult.lastID, tagResult.id],
+			// 				function (err) {
+			// 					if (err) {
+			// 						console.error(
+			// 							`Error running INSERT INTO menu_tags query for tag with ID ${tagId}:`,
+			// 							err
+			// 						);
+			// 					} else {
+			// 						console.log(`Tag with ID ${tagId} inserted successfully`);
+			// 					}
+			// 				}
+			// 			);
+			// 		} catch (error) {
+			// 			console.error(
+			// 				`Error running INSERT INTO menu_tags query for tag with ID ${tagId}:`,
+			// 				error
+			// 			);
+			// 		}
+			// 	}
+			// }
 
 			console.log(`businessId: ${businessId}, dishResult.lastID: ${dishResult.lastID}`);
 
@@ -392,55 +480,26 @@ const routes = (app) => {
 		});
 	});
 
-	// app.post('/data/admin/menu', async (req, res) => {
-	// 	if (!req.body || typeof req.body !== 'object') {
-	// 		return res.status(400).send({ error: 'Invalid request body' });
-	// 	}
-
-	// 	const { dish, categoryName, tags, businessId } = req.body;
-
-	// 	if (!dish) {
-	// 		return res.status(400).send({ error: 'Missing dish field' });
-	// 	}
-
-	// 	if (!categoryName) {
-	// 		return res.status(400).send({ error: 'Missing categoryName field' });
-	// 	}
-
-	// 	if (!tags) {
-	// 		return res.status(400).send({ error: 'Missing tags field' });
-	// 	}
-
-	// 	if (!businessId) {
-	// 		return res.status(400).send({ error: 'Missing businessId field' });
-	// 	}
-
+	// app.delete('/data/admin/menu/:id', async (req, res) => {
 	// 	try {
-	// 		await insertDish(dish, categoryName, tags, businessId);
-	// 		res.status(200).send({ message: 'Dish inserted successfully' });
-	// 	} catch (error) {
-	// 		console.error(error);
-	// 		res.status(500).send({ error: 'An error occurred while inserting the dish' });
-	// 	}
-	// });
-	// app.post('/data/admin/menu', async (req, res) => {
-	// 	const { name, description, price, isPizza, categoryId, businessId } = req.body;
-
-	// 	try {
-	// 		await db.run(
-	// 			'INSERT INTO menu(name, description, price, is_pizza, category_id, business_id) VALUES(?, ?, ?, ?, ?, ?)',
-	// 			[name, description, price, isPizza, categoryId, businessId]
-	// 		);
-	// 		res.json({ message: 'Dish inserted successfully' });
+	// 		await db.run('DELETE FROM menu WHERE id = ?', req.params.id);
+	// 		res.json({ message: 'Dish deleted successfully' });
 	// 	} catch (err) {
 	// 		console.error(err);
-	// 		res.status(500).json({ message: 'Error inserting dish' });
+	// 		res.status(500).json({ message: 'Error deleting dish' });
 	// 	}
 	// });
-
 	app.delete('/data/admin/menu/:id', async (req, res) => {
 		try {
+			// Delete associated entries from the menu_tags table
+			await db.run('DELETE FROM menu_tags WHERE menu_id = ?', req.params.id);
+
+			// Delete associated entries from the business_menu table
+			await db.run('DELETE FROM business_menu WHERE menu_id = ?', req.params.id);
+
+			// Delete the menu entry
 			await db.run('DELETE FROM menu WHERE id = ?', req.params.id);
+
 			res.json({ message: 'Dish deleted successfully' });
 		} catch (err) {
 			console.error(err);
