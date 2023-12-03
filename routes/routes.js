@@ -61,7 +61,7 @@ const routes = (app) => {
 		});
 	});
 
-	app.get('/data/admin/menu/highest-sort', (req, res) => {
+	app.get('/data/admin/menu/highest-price-sort', (req, res) => {
 		let businessId = req.query.business || 1;
 		let menuQuery = getMenuQuery(businessId, 'ORDER BY menu.price DESC');
 		db.all(menuQuery, (err, result) => {
@@ -74,7 +74,7 @@ const routes = (app) => {
 		});
 	});
 
-	app.get('/data/admin/menu/lowest-sort', (req, res) => {
+	app.get('/data/admin/menu/lowest-price-sort', (req, res) => {
 		let businessId = req.query.business || 1;
 		let menuQuery = getMenuQuery(businessId, 'ORDER BY menu.price ASC');
 		db.all(menuQuery, (err, result) => {
@@ -129,7 +129,7 @@ const routes = (app) => {
 		});
 	});
 
-	app.get('/data/admin/menu/is-pizza', (req, res) => {
+	app.get('/data/admin/menu/pizza-sort', (req, res) => {
 		let businessId = req.query.business || 1;
 		let menuQuery = getMenuQuery(businessId, 'ORDER BY menu.is_pizza DESC');
 		db.all(menuQuery, (err, result) => {
@@ -247,9 +247,16 @@ const routes = (app) => {
 	);
 
 	async function insertDish(dish, categoryId, tags, businessId) {
+		console.log('Dish:', dish);
 		try {
-			// Ensure dish.isPizza is a boolean value
-			const isPizza = Boolean(dish.isPizza);
+			// Ensure dish.is_pizza is not null or undefined
+			if (dish.is_pizza === null || dish.is_pizza === undefined) {
+				throw new Error('isPizza value is null or undefined');
+			}
+
+			// Convert dish.is_pizza to a number
+			const isPizza = Number(dish.is_pizza);
+			console.log('isPizza:', isPizza);
 
 			let dishResult = await new Promise((resolve, reject) => {
 				db.run(
@@ -312,63 +319,6 @@ const routes = (app) => {
 				}
 			}
 
-			// Fetch the id of each tag from the tags table and insert into the menu_tags table
-			// if (tags && tags.length > 0) {
-			// 	// Check if tags are provided
-			// 	for (const tagId of tags) {
-			// 		const tagResult = await db.get('SELECT id FROM tags WHERE id = ?', [tagId]);
-
-			// 		if (!tagResult) {
-			// 			throw new Error(`Tag with ID ${tagId} does not exist`);
-			// 		}
-			// 		console.log('Tag Result:', tagResult);
-
-			// 		try {
-			// 			await db.run(
-			// 				'INSERT INTO menu_tags (menu_id, tag_id) VALUES (?, ?)',
-			// 				[dishResult.lastID, tagResult.id],
-			// 				function (err) {
-			// 					if (err) {
-			// 						console.error(
-			// 							`Error running INSERT INTO menu_tags query for tag with ID ${tagId}:`,
-			// 							err
-			// 						);
-			// 					} else {
-			// 						console.log(`Tag with ID ${tagId} inserted successfully`);
-			// 					}
-			// 				}
-			// 			);
-			// 		} catch (error) {
-			// 			console.error(
-			// 				`Error running INSERT INTO menu_tags query for tag with ID ${tagId}:`,
-			// 				error
-			// 			);
-			// 		}
-
-			// 		try {
-			// 			await db.run(
-			// 				'INSERT INTO menu_tags (menu_id, tag_id) VALUES (?, ?)',
-			// 				[dishResult.lastID, tagResult.id],
-			// 				function (err) {
-			// 					if (err) {
-			// 						console.error(
-			// 							`Error running INSERT INTO menu_tags query for tag with ID ${tagId}:`,
-			// 							err
-			// 						);
-			// 					} else {
-			// 						console.log(`Tag with ID ${tagId} inserted successfully`);
-			// 					}
-			// 				}
-			// 			);
-			// 		} catch (error) {
-			// 			console.error(
-			// 				`Error running INSERT INTO menu_tags query for tag with ID ${tagId}:`,
-			// 				error
-			// 			);
-			// 		}
-			// 	}
-			// }
-
 			console.log(`businessId: ${businessId}, dishResult.lastID: ${dishResult.lastID}`);
 
 			//To ensure that the changes are committed to the database, using the `db.serialize` method to run your queries in a serialized manner.
@@ -412,21 +362,13 @@ const routes = (app) => {
 			return res.status(400).send({ error: 'Invalid request body' });
 		}
 
-		const {
-			name,
-			description,
-			price,
-			isPizza = false,
-			categoryId,
-			tags,
-			businessId
-		} = req.body;
+		const { name, description, price, is_pizza, categoryId, tags, businessId } = req.body;
 
-		if (!name || !description || !price || !categoryId || !businessId) {
+		if (!name || !description || !price || !is_pizza || !categoryId || !businessId) {
 			return res.status(400).send({ error: 'Missing required fields' });
 		}
 
-		const dish = { name, description, price, is_pizza: Boolean(isPizza) };
+		const dish = { name, description, price, is_pizza };
 
 		try {
 			await insertDish(dish, categoryId, tags, businessId);
@@ -480,15 +422,6 @@ const routes = (app) => {
 		});
 	});
 
-	// app.delete('/data/admin/menu/:id', async (req, res) => {
-	// 	try {
-	// 		await db.run('DELETE FROM menu WHERE id = ?', req.params.id);
-	// 		res.json({ message: 'Dish deleted successfully' });
-	// 	} catch (err) {
-	// 		console.error(err);
-	// 		res.status(500).json({ message: 'Error deleting dish' });
-	// 	}
-	// });
 	app.delete('/data/admin/menu/:id', async (req, res) => {
 		try {
 			// Delete associated entries from the menu_tags table
