@@ -357,27 +357,48 @@ const routes = (app) => {
 		}
 	}
 
-	app.post('/data/admin/menu', async (req, res) => {
-		if (!req.body || typeof req.body !== 'object') {
-			return res.status(400).send({ error: 'Invalid request body' });
+	app.post(
+		'/data/admin/menu',
+		[
+			body('name')
+				.notEmpty()
+				.isLength({ max: 100 })
+				.withMessage('Name is required, and must be less than 100 characters'),
+			body('description')
+				.notEmpty()
+				.isLength({ max: 500 })
+				.withMessage('Description is required, and must be less than 500 characters'),
+			body('price')
+				.isNumeric()
+				.isLength({ min: 1, max: 2 })
+				.withMessage('Price must be a number, and between 1 and 2 digits'),
+			body('is_pizza')
+				.isNumeric()
+				.custom((value) => value === 0 || value === 1)
+				.withMessage('is_pizza must be a number with a value of either 0 or 1')
+		],
+		async (req, res) => {
+			if (!req.body || typeof req.body !== 'object') {
+				return res.status(400).send({ error: 'Invalid request body' });
+			}
+
+			const { name, description, price, is_pizza, categoryId, tags, businessId } = req.body;
+
+			if (!name || !description || !price || !is_pizza || !categoryId || !businessId) {
+				return res.status(400).send({ error: 'Missing required fields' });
+			}
+
+			const dish = { name, description, price, is_pizza };
+
+			try {
+				await insertDish(dish, categoryId, tags, businessId);
+				res.status(200).send({ message: 'Dish inserted successfully' });
+			} catch (error) {
+				console.error(error);
+				res.status(500).send({ error: 'An error occurred while inserting the dish' });
+			}
 		}
-
-		const { name, description, price, is_pizza, categoryId, tags, businessId } = req.body;
-
-		if (!name || !description || !price || !is_pizza || !categoryId || !businessId) {
-			return res.status(400).send({ error: 'Missing required fields' });
-		}
-
-		const dish = { name, description, price, is_pizza };
-
-		try {
-			await insertDish(dish, categoryId, tags, businessId);
-			res.status(200).send({ message: 'Dish inserted successfully' });
-		} catch (error) {
-			console.error(error);
-			res.status(500).send({ error: 'An error occurred while inserting the dish' });
-		}
-	});
+	);
 
 	app.get('/data/admin/business_categories', (req, res) => {
 		let businessId = req.query.business || 1;
