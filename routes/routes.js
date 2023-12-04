@@ -5,14 +5,33 @@ const db = new sqlite3.Database('./db/gusto.db');
 
 const routes = (app) => {
 	function getMenuQuery(businessId, orderBy) {
-		let menuQuery = `SELECT menu.id, menu.name, menu.description, menu.price, menu.is_pizza, categories.category_name, GROUP_CONCAT(tags.tag_name) as tags
-        FROM menu
-        JOIN categories ON menu.category_id = categories.id
-        LEFT JOIN menu_tags ON menu.id = menu_tags.menu_id
-        LEFT JOIN tags ON menu_tags.tag_id = tags.id
-        JOIN business_menu ON menu.id = business_menu.menu_id
-        WHERE business_menu.business_id = ${businessId}
-        GROUP BY menu.id, menu.name, menu.description, menu.price, menu.is_pizza, categories.category_name
+		let menuQuery = `SELECT
+    menu.id,
+    menu.name,
+    menu.description,
+    business_menu.price,
+    menu.is_pizza,
+    categories.category_name,
+    GROUP_CONCAT(tags.tag_name) as tags
+FROM
+    menu
+JOIN
+    categories ON menu.category_id = categories.id
+LEFT JOIN
+    menu_tags ON menu.id = menu_tags.menu_id
+LEFT JOIN
+    tags ON menu_tags.tag_id = tags.id
+JOIN
+    business_menu ON menu.id = business_menu.menu_id
+WHERE
+    business_menu.business_id = ${businessId}
+GROUP BY
+    menu.id,
+    menu.name,
+    menu.description,
+    business_menu.price,
+    menu.is_pizza,
+    categories.category_name
         ${orderBy}`;
 
 		return menuQuery;
@@ -60,31 +79,51 @@ const routes = (app) => {
 		});
 	});
 
-	app.get('/data/admin/menu/highest-price-sort', (req, res, next) => {
-		let businessId = req.query.business || 1;
-		let menuQuery = getMenuQuery(businessId, 'ORDER BY menu.price DESC');
-		db.all(menuQuery, (err, result) => {
-			if (err) {
-				next(err);
-				return;
-			} else {
-				const jsonResult = JSON.stringify(result);
-				res.status(200).send(jsonResult);
-			}
-		});
-	});
+	// app.get('/data/admin/menu/highest-price-sort', (req, res, next) => {
+	// 	let businessId = req.query.business || 1;
+	// 	let menuQuery = getMenuQuery(businessId, 'ORDER BY menu.price DESC');
+	// 	db.all(menuQuery, (err, result) => {
+	// 		if (err) {
+	// 			next(err);
+	// 			return;
+	// 		} else {
+	// 			const jsonResult = JSON.stringify(result);
+	// 			res.status(200).send(jsonResult);
+	// 		}
+	// 	});
+	// });
 
-	app.get('/data/admin/menu/lowest-price-sort', (req, res, next) => {
-		let businessId = req.query.business || 1;
-		let menuQuery = getMenuQuery(businessId, 'ORDER BY menu.price ASC');
-		db.all(menuQuery, (err, result) => {
+	// app.get('/data/admin/menu/lowest-price-sort', (req, res, next) => {
+	// 	let businessId = req.query.business || 1;
+	// 	let menuQuery = getMenuQuery(businessId, 'ORDER BY menu.price ASC');
+	// 	db.all(menuQuery, (err, result) => {
+	// 		if (err) {
+	// 			next(err);
+	// 			return;
+	// 		} else {
+	// 			const jsonResult = JSON.stringify(result);
+	// 			res.status(200).send(jsonResult);
+	// 		}
+	// 	});
+	// });
+
+	app.patch('/data/admin/business_menu/:businessId/:menuId', async (req, res, next) => {
+		const { businessId, menuId } = req.params;
+		const { price } = req.body;
+
+		console.log('req.params:', req.params);
+		console.log('req.body:', req.body);
+
+		let sql = `UPDATE business_menu SET price = ? WHERE business_id = ? AND menu_id = ?`;
+
+		db.run(sql, [price, businessId, menuId], function (err) {
 			if (err) {
 				next(err);
 				return;
-			} else {
-				const jsonResult = JSON.stringify(result);
-				res.status(200).send(jsonResult);
 			}
+			console.log(`Row(s) updated: ${this.changes}`);
+
+			res.status(200).send({ message: 'Price updated successfully' });
 		});
 	});
 
@@ -191,13 +230,9 @@ const routes = (app) => {
 				.isLength({ max: 100 })
 				.withMessage('Name is required, and must be less than 100 characters'),
 			body('description')
-				.notEmpty()
-				.isLength({ max: 500 })
-				.withMessage('Description is required, and must be less than 500 characters'),
-			body('price')
-				.isNumeric()
-				.isLength({ min: 1, max: 2 })
-				.withMessage('Price must be a number, and between 1 and 2 digits'),
+				.optional()
+				.isLength({ max: 200 })
+				.withMessage('Description must be less than 200 characters'),
 			body('is_pizza')
 				.isNumeric()
 				.custom((value) => value === 0 || value === 1)
@@ -210,19 +245,18 @@ const routes = (app) => {
 				return;
 			}
 
-			const { name, description, price, is_pizza } = req.body;
+			const { name, description, is_pizza } = req.body;
 
 			try {
 				// Update the menu table
 				await db.run(
 					`
             UPDATE menu
-            SET name = ?, description = ?, price = ?, is_pizza = ?
+            SET name = ?, description = ?, is_pizza = ?
             WHERE id = ?
         `,
 					name,
 					description,
-					price,
 					is_pizza,
 					req.params.id
 				);
@@ -230,14 +264,14 @@ const routes = (app) => {
 				// Fetch the updated data
 				const updatedData = await db.get(
 					`
-            SELECT menu.id, menu.name, menu.description, menu.price, menu.is_pizza, categories.category_name, GROUP_CONCAT(tags.tag_name) as tags
-            FROM menu
-            JOIN categories ON menu.category_id = categories.id
-            LEFT JOIN menu_tags ON menu.id = menu_tags.menu_id
-            LEFT JOIN tags ON menu_tags.tag_id = tags.id
-            JOIN business_menu ON menu.id = business_menu.menu_id
-            WHERE menu.id = ?
-            GROUP BY menu.id, menu.name, menu.description, menu.price, menu.is_pizza, categories.category_name
+            SELECT menu.id, menu.name, menu.description, menu.is_pizza, categories.category_name, GROUP_CONCAT(tags.tag_name) as tags
+			FROM menu
+			JOIN categories ON menu.category_id = categories.id
+			LEFT JOIN menu_tags ON menu.id = menu_tags.menu_id
+			LEFT JOIN tags ON menu_tags.tag_id = tags.id
+			JOIN business_menu ON menu.id = business_menu.menu_id
+			WHERE menu.id = ?
+			GROUP BY menu.id, menu.name, menu.description, menu.is_pizza, categories.category_name
             `,
 					req.params.id
 				);
@@ -313,23 +347,16 @@ const routes = (app) => {
 
 			let dishResult = await new Promise((resolve, reject) => {
 				db.run(
-					'INSERT INTO menu (name, description, price, is_pizza, category_id) VALUES (?, ?, ?, ?, ?)',
-					[dish.name, dish.description, dish.price, isPizza, categoryId],
+					'INSERT INTO menu (name, description, is_pizza, category_id) VALUES (?, ?, ?, ?)',
+					[dish.name, dish.description, isPizza, categoryId],
 					function (err) {
 						if (err) {
-							next(err);
 							return reject(err);
 						}
 						resolve(this);
 					}
 				);
 			});
-
-			// Tried to use `db.get` to fetch the id of each tag from the tags table and insert into the menu_tags table but it didn't work with `await` keyword
-			// It was returning the `Database` object instead of the expected row data
-			//The `Database {}` output indicates that the `db.get` method is not returning the expected row data. Instead, it's returning the `Database` object. This is //likely because the `await` keyword is not being used correctly with `db.get`.
-
-			//The `db.get` method does not return a Promise, so it cannot be used with `await` directly. Instead, it uses a callback function to provide the result.
 
 			for (const tagId of tags) {
 				const tagResult = await new Promise((resolve, reject) => {
@@ -367,18 +394,19 @@ const routes = (app) => {
 				}
 			}
 
-			//To ensure that the changes are committed to the database, using the `db.serialize` method to run your queries in a serialized manner.
-
 			try {
 				await new Promise((resolve, reject) => {
+					if (dish.price === null || dish.price === undefined) {
+						console.log('Error: dish.price is null or undefined');
+						return reject(new Error('dish.price is null or undefined'));
+					}
 					db.serialize(() => {
 						db.run('BEGIN TRANSACTION');
 						db.run(
-							'INSERT INTO business_menu (business_id, menu_id) VALUES (?, ?)',
-							[businessId, dishResult.lastID],
+							'INSERT INTO business_menu (business_id, menu_id, price) VALUES (?, ?, ?)',
+							[businessId, dishResult.lastID, dish.price],
 							(err) => {
 								if (err) {
-									next(err);
 									return reject(err);
 								}
 								db.run('COMMIT');
@@ -389,21 +417,121 @@ const routes = (app) => {
 				});
 			} catch (error) {
 				db.run('ROLLBACK');
-				next(error);
-				return;
+				return console.log('error:', error);
 			}
 
-			// Insert the business_id and category_id into the business_categories table
-			// Ignore the error if the business is already associated with the category
 			await db.run(
 				'INSERT OR IGNORE INTO business_categories (business_id, category_id) VALUES (?, ?)',
 				[businessId, categoryId]
 			);
 		} catch (error) {
-			next(error);
-			return;
+			return console.log(error);
 		}
 	}
+
+	// async function insertDish(dish, categoryId, tags, businessId) {
+	// 	console.log('Dish:', dish);
+	// 	try {
+	// 		if (dish.is_pizza === null || dish.is_pizza === undefined) {
+	// 			next(new Error('isPizza value is null or undefined'));
+	// 			return;
+	// 		}
+
+	// 		const isPizza = Number(dish.is_pizza);
+
+	// 		let dishResult = await new Promise((resolve, reject) => {
+	// 			db.run(
+	// 				'INSERT INTO menu (name, description, price, is_pizza, category_id) VALUES (?, ?, ?, ?, ?)',
+	// 				[dish.name, dish.description, dish.price, isPizza, categoryId],
+	// 				function (err) {
+	// 					if (err) {
+	// 						next(err);
+	// 						return reject(err);
+	// 					}
+	// 					resolve(this);
+	// 				}
+	// 			);
+	// 		});
+
+	// 		// Tried to use `db.get` to fetch the id of each tag from the tags table and insert into the menu_tags table but it didn't work with `await` keyword
+	// 		// It was returning the `Database` object instead of the expected row data
+	// 		//The `Database {}` output indicates that the `db.get` method is not returning the expected row data. Instead, it's returning the `Database` object. This is //likely because the `await` keyword is not being used correctly with `db.get`.
+
+	// 		//The `db.get` method does not return a Promise, so it cannot be used with `await` directly. Instead, it uses a callback function to provide the result.
+
+	// 		for (const tagId of tags) {
+	// 			const tagResult = await new Promise((resolve, reject) => {
+	// 				db.get('SELECT id FROM tags WHERE id = ?', [tagId], (err, row) => {
+	// 					if (err) {
+	// 						next(err);
+	// 						return reject(err);
+	// 					} else {
+	// 						resolve(row);
+	// 					}
+	// 				});
+	// 			});
+
+	// 			if (!tagResult) {
+	// 				next(new Error(`Tag with ID ${tagId} does not exist`));
+	// 				return;
+	// 			}
+
+	// 			try {
+	// 				await db.run(
+	// 					'INSERT INTO menu_tags (menu_id, tag_id) VALUES (?, ?)',
+	// 					[dishResult.lastID, tagResult.id],
+	// 					function (err) {
+	// 						if (err) {
+	// 							next(err);
+	// 							return;
+	// 						} else {
+	// 							console.log(`Tag with ID ${tagId} inserted successfully`);
+	// 						}
+	// 					}
+	// 				);
+	// 			} catch (error) {
+	// 				next(error);
+	// 				return;
+	// 			}
+	// 		}
+
+	// 		//To ensure that the changes are committed to the database, using the `db.serialize` method to run your queries in a serialized manner.
+
+	// 		try {
+	// 			await new Promise((resolve, reject) => {
+	// 				db.serialize(() => {
+	// 					db.run('BEGIN TRANSACTION');
+	// 					db.run(
+	// 						'INSERT INTO business_menu (business_id, menu_id) VALUES (?, ?)',
+	// 						[businessId, dishResult.lastID],
+	// 						(err) => {
+	// 							if (err) {
+	// 								next(err);
+	// 								return reject(err);
+	// 							}
+	// 							db.run('COMMIT');
+	// 							resolve();
+	// 						}
+	// 					);
+	// 				});
+	// 			});
+	// 		} catch (error) {
+	// 			db.run('ROLLBACK');
+	// 			next(error);
+	// 			return;
+	// 		}
+
+	// 		// Insert the business_id and category_id into the business_categories table
+	// 		// Ignore the error if the business is already associated with the category
+	// 		await db.run(
+	// 			'INSERT OR IGNORE INTO business_categories (business_id, category_id) VALUES (?, ?)',
+	// 			[businessId, categoryId]
+	// 		);
+	// 	} catch (error) {
+	// 		next(error);
+	// 		return;
+	// 	}
+	// }
 
 	app.post(
 		'/data/admin/menu',
@@ -416,14 +544,13 @@ const routes = (app) => {
 				.notEmpty()
 				.isLength({ max: 500 })
 				.withMessage('Description is required, and must be less than 500 characters'),
-			body('price')
-				.isNumeric()
-				.isLength({ min: 1, max: 2 })
-				.withMessage('Price must be a number, and between 1 and 2 digits'),
 			body('is_pizza')
 				.isNumeric()
 				.custom((value) => value === 0 || value === 1)
-				.withMessage('is_pizza must be a number with a value of either 0 or 1')
+				.withMessage('is_pizza must be a number with a value of either 0 or 1'),
+			body('price') // Add price validation
+				.isNumeric()
+				.withMessage('Price must be a number')
 		],
 		async (req, res, next) => {
 			if (!req.body || typeof req.body !== 'object') {
@@ -431,14 +558,22 @@ const routes = (app) => {
 				return;
 			}
 
-			const { name, description, price, is_pizza, categoryId, tags, businessId } = req.body;
+			const { name, description, is_pizza, categoryId, tags, businessId, price } = req.body; // Add price here
 
-			if (!name || !description || !price || !is_pizza || !categoryId || !businessId) {
+			if (
+				!name ||
+				!description ||
+				!is_pizza ||
+				!categoryId ||
+				!businessId ||
+				price === undefined
+			) {
+				// Check if price is undefined
 				next(new Error('Missing required fields'));
 				return;
 			}
 
-			const dish = { name, description, price, is_pizza };
+			const dish = { name, description, is_pizza, price }; // Add price here
 
 			try {
 				await insertDish(dish, categoryId, tags, businessId);
