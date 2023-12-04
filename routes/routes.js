@@ -541,8 +541,8 @@ GROUP BY
 				.isLength({ max: 100 })
 				.withMessage('Name is required, and must be less than 100 characters'),
 			body('description')
-				.notEmpty()
-				.isLength({ max: 500 })
+				.optionalq()
+				.isLength({ max: 200 })
 				.withMessage('Description is required, and must be less than 500 characters'),
 			body('is_pizza')
 				.isNumeric()
