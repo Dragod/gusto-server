@@ -4,10 +4,6 @@ import { body, validationResult } from 'express-validator';
 const db = new sqlite3.Database('./db/gusto.db');
 
 const routes = (app) => {
-	app.get('/', (req, res) => {
-		res.send('Hello, World!');
-	});
-
 	function getMenuQuery(businessId, orderBy) {
 		let menuQuery = `SELECT menu.id, menu.name, menu.description, menu.price, menu.is_pizza, categories.category_name, GROUP_CONCAT(tags.tag_name) as tags
         FROM menu
@@ -22,12 +18,13 @@ const routes = (app) => {
 		return menuQuery;
 	}
 
-	app.get('/data/admin/menu', (req, res) => {
+	app.get('/data/admin/menu', (req, res, next) => {
 		let businessId = req.query.business || 1;
 		let menuQuery = getMenuQuery(businessId, 'ORDER BY categories.id');
 		db.all(menuQuery, (err, result) => {
 			if (err) {
-				res.status(500).send(err);
+				next(err);
+				return;
 			} else {
 				const jsonResult = JSON.stringify(result);
 				res.status(200).send(jsonResult);
@@ -35,12 +32,13 @@ const routes = (app) => {
 		});
 	});
 
-	app.get('/data/admin/menu/name-asc-sort', (req, res) => {
+	app.get('/data/admin/menu/name-asc-sort', (req, res, next) => {
 		let businessId = req.query.business || 1;
 		let menuQuery = getMenuQuery(businessId, 'ORDER BY menu.name ASC');
 		db.all(menuQuery, (err, result) => {
 			if (err) {
-				res.status(500).send(err);
+				next(err);
+				return;
 			} else {
 				const jsonResult = JSON.stringify(result);
 				res.status(200).send(jsonResult);
@@ -48,12 +46,13 @@ const routes = (app) => {
 		});
 	});
 
-	app.get('/data/admin/menu/name-desc-sort', (req, res) => {
+	app.get('/data/admin/menu/name-desc-sort', (req, res, next) => {
 		let businessId = req.query.business || 1;
 		let menuQuery = getMenuQuery(businessId, 'ORDER BY menu.name DESC');
 		db.all(menuQuery, (err, result) => {
 			if (err) {
-				res.status(500).send(err);
+				next(err);
+				return;
 			} else {
 				const jsonResult = JSON.stringify(result);
 				res.status(200).send(jsonResult);
@@ -61,12 +60,13 @@ const routes = (app) => {
 		});
 	});
 
-	app.get('/data/admin/menu/highest-price-sort', (req, res) => {
+	app.get('/data/admin/menu/highest-price-sort', (req, res, next) => {
 		let businessId = req.query.business || 1;
 		let menuQuery = getMenuQuery(businessId, 'ORDER BY menu.price DESC');
 		db.all(menuQuery, (err, result) => {
 			if (err) {
-				res.status(500).send(err);
+				next(err);
+				return;
 			} else {
 				const jsonResult = JSON.stringify(result);
 				res.status(200).send(jsonResult);
@@ -74,12 +74,13 @@ const routes = (app) => {
 		});
 	});
 
-	app.get('/data/admin/menu/lowest-price-sort', (req, res) => {
+	app.get('/data/admin/menu/lowest-price-sort', (req, res, next) => {
 		let businessId = req.query.business || 1;
 		let menuQuery = getMenuQuery(businessId, 'ORDER BY menu.price ASC');
 		db.all(menuQuery, (err, result) => {
 			if (err) {
-				res.status(500).send(err);
+				next(err);
+				return;
 			} else {
 				const jsonResult = JSON.stringify(result);
 				res.status(200).send(jsonResult);
@@ -87,13 +88,14 @@ const routes = (app) => {
 		});
 	});
 
-	app.get('/data/admin/menu/new-sort', (req, res) => {
+	app.get('/data/admin/menu/new-sort', (req, res, next) => {
 		let businessId = req.query.business || 1;
 		let orderBynew = `ORDER BY CASE WHEN tags LIKE '%NEW%' THEN 0 ELSE 1 END, tags`;
 		let menuQuery = getMenuQuery(businessId, orderBynew);
 		db.all(menuQuery, (err, result) => {
 			if (err) {
-				res.status(500).send(err);
+				next(err);
+				return;
 			} else {
 				const jsonResult = JSON.stringify(result);
 				res.status(200).send(jsonResult);
@@ -101,13 +103,14 @@ const routes = (app) => {
 		});
 	});
 
-	app.get('/data/admin/menu/cer-sort', (req, res) => {
+	app.get('/data/admin/menu/cer-sort', (req, res, next) => {
 		let businessId = req.query.business || 1;
 		let orderBycer = `ORDER BY CASE WHEN tags LIKE '%CER%' THEN 0 ELSE 1 END, tags`;
 		let menuQuery = getMenuQuery(businessId, orderBycer);
 		db.all(menuQuery, (err, result) => {
 			if (err) {
-				res.status(500).send(err);
+				next(err);
+				return;
 			} else {
 				const jsonResult = JSON.stringify(result);
 				res.status(200).send(jsonResult);
@@ -115,13 +118,14 @@ const routes = (app) => {
 		});
 	});
 
-	app.get('/data/admin/menu/sur-sort', (req, res) => {
+	app.get('/data/admin/menu/sur-sort', (req, res, next) => {
 		let businessId = req.query.business || 1;
 		let orderBysur = `ORDER BY CASE WHEN tags LIKE '%SUR%' THEN 0 ELSE 1 END, tags`;
 		let menuQuery = getMenuQuery(businessId, orderBysur);
 		db.all(menuQuery, (err, result) => {
 			if (err) {
-				res.status(500).send(err);
+				next(err);
+				return;
 			} else {
 				const jsonResult = JSON.stringify(result);
 				res.status(200).send(jsonResult);
@@ -129,12 +133,13 @@ const routes = (app) => {
 		});
 	});
 
-	app.get('/data/admin/menu/pizza-sort', (req, res) => {
+	app.get('/data/admin/menu/pizza-sort', (req, res, next) => {
 		let businessId = req.query.business || 1;
 		let menuQuery = getMenuQuery(businessId, 'ORDER BY menu.is_pizza DESC');
 		db.all(menuQuery, (err, result) => {
 			if (err) {
-				res.status(500).send(err);
+				next(err);
+				return;
 			} else {
 				const jsonResult = JSON.stringify(result);
 				res.status(200).send(jsonResult);
@@ -142,10 +147,11 @@ const routes = (app) => {
 		});
 	});
 
-	app.get('/data/admin/business', (req, res) => {
+	app.get('/data/admin/business', (req, res, next) => {
 		db.all('SELECT * FROM business', (err, result) => {
 			if (err) {
-				res.status(500).send(err);
+				next(err);
+				return;
 			} else {
 				const jsonResult = JSON.stringify(result);
 				res.status(200).send(jsonResult);
@@ -153,10 +159,11 @@ const routes = (app) => {
 		});
 	});
 
-	app.get('/data/admin/categories', (req, res) => {
+	app.get('/data/admin/categories', (req, res, next) => {
 		db.all('SELECT * FROM categories', (err, result) => {
 			if (err) {
-				res.status(500).send(err);
+				next(err);
+				return;
 			} else {
 				const jsonResult = JSON.stringify(result);
 				res.status(200).send(jsonResult);
@@ -164,10 +171,11 @@ const routes = (app) => {
 		});
 	});
 
-	app.get('/data/tags', (req, res) => {
+	app.get('/data/tags', (req, res, next) => {
 		db.all('SELECT * FROM tags', (err, result) => {
 			if (err) {
-				res.status(500).send(err);
+				next(err);
+				return;
 			} else {
 				const jsonResult = JSON.stringify(result);
 				res.status(200).send(jsonResult);
@@ -195,10 +203,11 @@ const routes = (app) => {
 				.custom((value) => value === 0 || value === 1)
 				.withMessage('is_pizza must be a number with a value of either 0 or 1')
 		],
-		async (req, res) => {
+		async (req, res, next) => {
 			const errors = validationResult(req);
 			if (!errors.isEmpty()) {
-				return res.status(400).json({ errors: errors.array() });
+				next(errors.array());
+				return;
 			}
 
 			const { name, description, price, is_pizza } = req.body;
@@ -238,24 +247,24 @@ const routes = (app) => {
 					...updatedData
 				});
 			} catch (error) {
-				res.status(500).send({
-					error: 'An error occurred while updating the menu data',
-					message: error.message
-				});
+				next(error);
+				return;
 			}
 		}
 	);
 
-	app.get('/data/admin/categories/:id', (req, res) => {
+	app.get('/data/admin/categories/:id', (req, res, next) => {
 		console.log('req.params:', req.params);
 		const { id } = req.params;
 
 		db.get(`SELECT * FROM categories WHERE id = ?`, id, (err, row) => {
 			if (err) {
-				return res.status(500).json({ error: err.message });
+				next(err);
+				return;
 			}
 			if (!row) {
-				return res.status(404).json({ error: 'No category found with id: ' + id });
+				next(new Error(`No category found with id: ${id}`));
+				return;
 			}
 			return res.json(row);
 		});
@@ -269,7 +278,7 @@ const routes = (app) => {
 				.isLength({ min: 4, max: 100 })
 				.withMessage('Category name is required, and must be less than 100 characters')
 		],
-		(req, res) => {
+		(req, res, next) => {
 			const { id } = req.params;
 			const { category_name } = req.body;
 			console.log('req.params:', req.params);
@@ -280,7 +289,8 @@ const routes = (app) => {
 				[category_name, id],
 				function (err) {
 					if (err) {
-						return res.status(500).json({ error: err.message });
+						next(err);
+						return;
 					}
 					return res.json({
 						message: 'Category updated successfully',
@@ -294,14 +304,12 @@ const routes = (app) => {
 	async function insertDish(dish, categoryId, tags, businessId) {
 		console.log('Dish:', dish);
 		try {
-			// Ensure dish.is_pizza is not null or undefined
 			if (dish.is_pizza === null || dish.is_pizza === undefined) {
-				throw new Error('isPizza value is null or undefined');
+				next(new Error('isPizza value is null or undefined'));
+				return;
 			}
 
-			// Convert dish.is_pizza to a number
 			const isPizza = Number(dish.is_pizza);
-			console.log('isPizza:', isPizza);
 
 			let dishResult = await new Promise((resolve, reject) => {
 				db.run(
@@ -309,14 +317,13 @@ const routes = (app) => {
 					[dish.name, dish.description, dish.price, isPizza, categoryId],
 					function (err) {
 						if (err) {
+							next(err);
 							return reject(err);
 						}
 						resolve(this);
 					}
 				);
 			});
-
-			console.log('Tags:', tags);
 
 			// Tried to use `db.get` to fetch the id of each tag from the tags table and insert into the menu_tags table but it didn't work with `await` keyword
 			// It was returning the `Database` object instead of the expected row data
@@ -328,7 +335,8 @@ const routes = (app) => {
 				const tagResult = await new Promise((resolve, reject) => {
 					db.get('SELECT id FROM tags WHERE id = ?', [tagId], (err, row) => {
 						if (err) {
-							reject(err);
+							next(err);
+							return reject(err);
 						} else {
 							resolve(row);
 						}
@@ -336,10 +344,9 @@ const routes = (app) => {
 				});
 
 				if (!tagResult) {
-					throw new Error(`Tag with ID ${tagId} does not exist`);
+					next(new Error(`Tag with ID ${tagId} does not exist`));
+					return;
 				}
-
-				console.log('Tag Result:', tagResult);
 
 				try {
 					await db.run(
@@ -347,24 +354,18 @@ const routes = (app) => {
 						[dishResult.lastID, tagResult.id],
 						function (err) {
 							if (err) {
-								console.error(
-									`Error running INSERT INTO menu_tags query for tag with ID ${tagId}:`,
-									err
-								);
+								next(err);
+								return;
 							} else {
 								console.log(`Tag with ID ${tagId} inserted successfully`);
 							}
 						}
 					);
 				} catch (error) {
-					console.error(
-						`Error running INSERT INTO menu_tags query for tag with ID ${tagId}:`,
-						error
-					);
+					next(error);
+					return;
 				}
 			}
-
-			console.log(`businessId: ${businessId}, dishResult.lastID: ${dishResult.lastID}`);
 
 			//To ensure that the changes are committed to the database, using the `db.serialize` method to run your queries in a serialized manner.
 
@@ -377,6 +378,7 @@ const routes = (app) => {
 							[businessId, dishResult.lastID],
 							(err) => {
 								if (err) {
+									next(err);
 									return reject(err);
 								}
 								db.run('COMMIT');
@@ -386,8 +388,9 @@ const routes = (app) => {
 					});
 				});
 			} catch (error) {
-				console.error('Error running INSERT INTO business_menu query:', error);
 				db.run('ROLLBACK');
+				next(error);
+				return;
 			}
 
 			// Insert the business_id and category_id into the business_categories table
@@ -397,8 +400,8 @@ const routes = (app) => {
 				[businessId, categoryId]
 			);
 		} catch (error) {
-			console.error(error);
-			throw error;
+			next(error);
+			return;
 		}
 	}
 
@@ -422,15 +425,17 @@ const routes = (app) => {
 				.custom((value) => value === 0 || value === 1)
 				.withMessage('is_pizza must be a number with a value of either 0 or 1')
 		],
-		async (req, res) => {
+		async (req, res, next) => {
 			if (!req.body || typeof req.body !== 'object') {
-				return res.status(400).send({ error: 'Invalid request body' });
+				next(new Error('Invalid request body'));
+				return;
 			}
 
 			const { name, description, price, is_pizza, categoryId, tags, businessId } = req.body;
 
 			if (!name || !description || !price || !is_pizza || !categoryId || !businessId) {
-				return res.status(400).send({ error: 'Missing required fields' });
+				next(new Error('Missing required fields'));
+				return;
 			}
 
 			const dish = { name, description, price, is_pizza };
@@ -439,8 +444,8 @@ const routes = (app) => {
 				await insertDish(dish, categoryId, tags, businessId);
 				res.status(200).send({ message: 'Dish inserted successfully' });
 			} catch (error) {
-				console.error(error);
-				res.status(500).send({ error: 'An error occurred while inserting the dish' });
+				next(error);
+				return;
 			}
 		}
 	);
@@ -456,11 +461,12 @@ const routes = (app) => {
 				.isLength({ min: 4, max: 50 })
 				.withMessage('Category name is required, and must be between 4 and 50 characters')
 		],
-		async (req, res) => {
+		async (req, res, next) => {
 			const errors = validationResult(req);
 			if (!errors.isEmpty()) {
 				console.log('errors:', errors);
-				return res.status(400).json({ errors: errors.array() });
+				next(errors.array());
+				return;
 			}
 			const { categoryName, businessIds } = req.body;
 
@@ -473,6 +479,7 @@ const routes = (app) => {
 						categoryName,
 						function (err) {
 							if (err) {
+								next(err);
 								return reject(err);
 							}
 							resolve(this.lastID);
@@ -493,13 +500,13 @@ const routes = (app) => {
 					categoryId: categoryId
 				});
 			} catch (error) {
-				console.error(error);
-				res.status(500).send({ error: 'An error occurred while creating the category' });
+				next(error);
+				return;
 			}
 		}
 	);
 
-	app.get('/data/admin/business_categories', (req, res) => {
+	app.get('/data/admin/business_categories', (req, res, next) => {
 		let businessId = req.query.business || 1;
 		db.all(
 			`SELECT categories.category_name
@@ -508,7 +515,8 @@ const routes = (app) => {
 				WHERE business_categories.business_id = ${businessId};`,
 			(err, result) => {
 				if (err) {
-					res.status(500).send(err);
+					next(err);
+					return;
 				} else {
 					const jsonResult = JSON.stringify(result);
 					res.status(200).send(jsonResult);
@@ -518,10 +526,11 @@ const routes = (app) => {
 		);
 	});
 
-	app.get('/data/admin/tags', (req, res) => {
+	app.get('/data/admin/tags', (req, res, next) => {
 		db.all(`SELECT * FROM tags`, (err, result) => {
 			if (err) {
-				res.status(500).send(err);
+				next(err);
+				return;
 			} else {
 				const jsonResult = JSON.stringify(result);
 				res.status(200).send(jsonResult);
@@ -530,11 +539,12 @@ const routes = (app) => {
 		});
 	});
 
-	app.get('/data/admin/catIdFromCatName', (req, res) => {
+	app.get('/data/admin/catIdFromCatName', (req, res, next) => {
 		let catName = decodeURIComponent(req.query.category_name);
 		db.all(`SELECT id FROM categories WHERE category_name = ?;`, [catName], (err, result) => {
 			if (err) {
-				res.status(500).send(err);
+				next(err);
+				return;
 			} else {
 				res.status(200).json(result);
 				console.log(result);
@@ -542,7 +552,7 @@ const routes = (app) => {
 		});
 	});
 
-	app.delete('/data/admin/menu/:id', async (req, res) => {
+	app.delete('/data/admin/menu/:id', async (req, res, next) => {
 		try {
 			// Delete associated entries from the menu_tags table
 			await db.run('DELETE FROM menu_tags WHERE menu_id = ?', req.params.id);
@@ -555,12 +565,12 @@ const routes = (app) => {
 
 			res.json({ message: 'Dish deleted successfully' });
 		} catch (err) {
-			console.error(err);
-			res.status(500).json({ message: 'Error deleting dish' });
+			next(err);
+			return;
 		}
 	});
 
-	app.delete('/data/admin/categories/:id', async (req, res) => {
+	app.delete('/data/admin/categories/:id', async (req, res, next) => {
 		const categoryId = req.params.id;
 
 		try {
@@ -572,8 +582,8 @@ const routes = (app) => {
 
 			res.status(200).send({ message: 'Category deleted successfully' });
 		} catch (error) {
-			console.error(error);
-			res.status(500).send({ error: 'An error occurred while deleting the category' });
+			next(error);
+			return;
 		}
 	});
 };

@@ -27,4 +27,15 @@ const getAll = async (query) => {
 	}
 };
 
-export default { connectToDatabase, getAll };
+const dbconn = async () => {
+	try {
+		db = new sqlite3.Database('./db/gusto.db');
+		console.log('Connected to the Gusto database.');
+		return db; // Return the sqlite3.Database instance
+	} catch (err) {
+		console.error(err.message);
+		throw err;
+	}
+};
+
+export default { connectToDatabase, getAll, dbconn };
