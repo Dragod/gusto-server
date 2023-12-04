@@ -142,7 +142,7 @@ const routes = (app) => {
 		});
 	});
 
-	app.get('/data/business', (req, res) => {
+	app.get('/data/admin/business', (req, res) => {
 		db.all('SELECT * FROM business', (err, result) => {
 			if (err) {
 				res.status(500).send(err);
@@ -445,6 +445,60 @@ const routes = (app) => {
 		}
 	);
 
+	//Having an issue here due to the asynchronous nature of the `db.run` method the category id is not inserted in business_category table. When you're using `await` with `db.run`, it might not wait for the callback function where you're setting `categoryId = this.lastID` to complete before moving on to the next part of the code.
+	//To ensure that `categoryId` is set before the code continues, we can wrap the `db.run` method in a new Promise and resolve it inside the callback function
+
+	app.post(
+		'/data/admin/categories',
+		[
+			body('categoryName')
+				.notEmpty()
+				.isLength({ min: 4, max: 50 })
+				.withMessage('Category name is required, and must be between 4 and 50 characters')
+		],
+		async (req, res) => {
+			const errors = validationResult(req);
+			if (!errors.isEmpty()) {
+				console.log('errors:', errors);
+				return res.status(400).json({ errors: errors.array() });
+			}
+			const { categoryName, businessIds } = req.body;
+
+			console.log('req.body:', req.body);
+
+			try {
+				let categoryId = await new Promise((resolve, reject) => {
+					db.run(
+						'INSERT INTO categories (category_name) VALUES (?)',
+						categoryName,
+						function (err) {
+							if (err) {
+								return reject(err);
+							}
+							resolve(this.lastID);
+						}
+					);
+				});
+
+				// Associate the category with each business
+				for (let businessId of businessIds) {
+					await db.run(
+						'INSERT INTO business_categories (business_id, category_id) VALUES (?, ?)',
+						[businessId, categoryId]
+					);
+				}
+
+				res.status(201).send({
+					message: 'Category created successfully',
+					categoryId: categoryId
+				});
+			} catch (error) {
+				console.error(error);
+				res.status(500).send({ error: 'An error occurred while creating the category' });
+			}
+		}
+	);
+
 	app.get('/data/admin/business_categories', (req, res) => {
 		let businessId = req.query.business || 1;
 		db.all(
@@ -503,6 +557,23 @@ const routes = (app) => {
 		} catch (err) {
 			console.error(err);
 			res.status(500).json({ message: 'Error deleting dish' });
+		}
+	});
+
+	app.delete('/data/admin/categories/:id', async (req, res) => {
+		const categoryId = req.params.id;
+
+		try {
+			// Delete the associations from the business_categories table
+			await db.run('DELETE FROM business_categories WHERE category_id = ?', [categoryId]);
+
+			// Delete the category
+			await db.run('DELETE FROM categories WHERE id = ?', [categoryId]);
+
+			res.status(200).send({ message: 'Category deleted successfully' });
+		} catch (error) {
+			console.error(error);
+			res.status(500).send({ error: 'An error occurred while deleting the category' });
 		}
 	});
 };
