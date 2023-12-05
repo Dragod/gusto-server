@@ -1,7 +1,6 @@
 import express from 'express';
 import { dbMiddleware } from './middleware/dbMiddleware.js';
 import cors from 'cors';
-import db from './db/db-connect.js';
 import getRoutes from './routes/get.js';
 import postRoutes from './routes/post.js';
 import patchRoutes from './routes/patch.js';
