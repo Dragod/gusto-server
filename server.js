@@ -1,18 +1,26 @@
 import express from 'express';
+import { dbMiddleware } from './middleware/dbMiddleware.js';
 import cors from 'cors';
-import routes from './routes/routes.js';
 import db from './db/db-connect.js';
+import getRoutes from './routes/get.js';
+import postRoutes from './routes/post.js';
+import patchRoutes from './routes/patch.js';
+import deleteRoutes from './routes/delete.js';
 
 const app = express();
 const port = 5000;
-
+app.use(dbMiddleware);
 app.use(cors());
 app.use(express.json());
-routes(app);
+
+// Setup routes
+getRoutes(app);
+postRoutes(app);
+patchRoutes(app);
+deleteRoutes(app);
 
 // Error handler - send errors to the database and return a 500 status code
 app.use(async (err, req, res, next) => {
-	const db1 = await db.dbconn();
 	console.log('err:', err); // Log the err object
 
 	const errorMessage = JSON.stringify(err);
@@ -22,7 +30,7 @@ app.use(async (err, req, res, next) => {
 
 	console.error(`Error message: ${errorMessage}`);
 
-	db1.run(
+	req.db.run(
 		`INSERT INTO error_logs (error_message, endpoint) VALUES (?, ?)`,
 		[errorMessage, endpoint],
 		function (err) {
