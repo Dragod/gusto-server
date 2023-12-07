@@ -13,6 +13,10 @@ app.use(cors());
 app.use(express.json());
 
 // Setup routes
+app.use((err, req, res, next) => {
+	console.error(err.stack);
+	res.status(500).json({ error: err.message });
+});
 getRoutes(app);
 postRoutes(app);
 patchRoutes(app);

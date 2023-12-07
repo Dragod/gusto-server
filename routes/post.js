@@ -202,6 +202,24 @@ const postRoutes = (app) => {
 			}
 		}
 	);
+
+	app.post('/data/admin/tags', (req, res, next) => {
+		const { tag_name, description } = req.body;
+
+		if (!tag_name || !description) {
+			return res.status(400).json({ error: 'tag_name and description are required' });
+		}
+
+		const sql = 'INSERT INTO tags (tag_name, description) VALUES (?, ?)';
+		req.db.run(sql, [tag_name, description], function (err) {
+			if (err) {
+				next(err);
+				return;
+			}
+
+			res.status(201).json({ id: this.lastID, tag_name, description });
+		});
+	});
 };
 
 export default postRoutes;

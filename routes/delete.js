@@ -33,6 +33,20 @@ const deleteRoutes = (app) => {
 			return;
 		}
 	});
+
+	app.delete('/data/admin/tags/:id', (req, res, next) => {
+		const { id } = req.params;
+		console.log('req.params:', req.params);
+
+		const sql = 'DELETE FROM tags WHERE id = ?';
+		req.db.run(sql, id, function (err) {
+			if (err) {
+				next(err);
+				return;
+			}
+			res.status(200).json({ message: 'Tag deleted successfully' });
+		});
+	});
 };
 
 export default deleteRoutes;

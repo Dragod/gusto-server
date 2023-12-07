@@ -24,19 +24,20 @@ const patchRoutes = (app) => {
 				return;
 			}
 
-			const { name, description, is_pizza } = req.body;
+			const { name, description, is_pizza, category_id } = req.body;
 
 			try {
 				// Update the menu table
 				await req.db.run(
 					`
             UPDATE menu
-            SET name = ?, description = ?, is_pizza = ?
+            SET name = ?, description = ?, is_pizza = ?, category_id = ?
             WHERE id = ?
         `,
 					name,
 					description,
 					is_pizza,
+					category_id,
 					req.params.id
 				);
 
@@ -114,6 +115,32 @@ const patchRoutes = (app) => {
 			console.log(`Row(s) updated: ${this.changes}`);
 
 			res.status(200).send({ message: 'Price updated successfully' });
+		});
+	});
+
+	app.patch('/data/admin/tags/:id', (req, res, next) => {
+		const { id } = req.params;
+		const { tag_name, description } = req.body;
+
+		console.log('req.params:', req.params);
+		console.log('req.body:', req.body);
+
+		// Prepare the SQL statement
+		let sql = `UPDATE tags SET tag_name = ?, description = ? WHERE id = ?`;
+
+		// Execute the SQL statement
+		req.db.run(sql, [tag_name, description, id], function (err) {
+			if (err) {
+				next(err);
+				return;
+			}
+
+			// Send a 200 response
+			if (this.changes > 0) {
+				res.send('Tag updated successfully');
+			} else {
+				res.status(404).send('Tag not found');
+			}
 		});
 	});
 };

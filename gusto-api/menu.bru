@@ -4,8 +4,16 @@ meta {
   seq: 1
 }
 
-get {
-  url: 
-  body: none
+patch {
+  url: http://localhost:5000/data/admin/business_menu/1/1
+  body: json
   auth: none
+}
+
+body:json {
+  {"price":70}
+}
+
+body:form-urlencoded {
+  price: 10
 }

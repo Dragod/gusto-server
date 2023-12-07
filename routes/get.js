@@ -1,9 +1,11 @@
 const getRoutes = (app) => {
-	function getMenuQuery(businessId, orderBy) {
+	function getMenuQuery(businessId, orderBy, isPizza = false) {
+		let pizzaCondition = isPizza ? 'AND menu.is_pizza = 1' : '';
 		let menuQuery = `SELECT
     menu.id,
     menu.name,
     menu.description,
+	menu.category_id,
     business_menu.price,
     menu.is_pizza,
     categories.category_name,
@@ -19,7 +21,7 @@ LEFT JOIN
 JOIN
     business_menu ON menu.id = business_menu.menu_id
 WHERE
-    business_menu.business_id = ${businessId}
+    business_menu.business_id = ${businessId} ${pizzaCondition}
 GROUP BY
     menu.id,
     menu.name,
@@ -121,7 +123,7 @@ GROUP BY
 
 	app.get('/data/admin/menu/pizza-sort', (req, res, next) => {
 		let businessId = req.query.business || 1;
-		let menuQuery = getMenuQuery(businessId, 'ORDER BY menu.is_pizza DESC');
+		let menuQuery = getMenuQuery(businessId, 'ORDER BY menu.is_pizza DESC', true);
 		req.db.all(menuQuery, (err, result) => {
 			if (err) {
 				next(err);
@@ -234,6 +236,92 @@ GROUP BY
 				}
 			}
 		);
+	});
+
+	app.get('/data/admin/business_categories/:businessId', async (req, res, next) => {
+		const businessId = parseInt(req.params.businessId);
+
+		console.log('req.params:', businessId);
+
+		try {
+			// Fetch the categories for the business from your database
+			const categories = await req.db.all(
+				'SELECT * FROM business_categories WHERE business_id = ?',
+				[businessId]
+			);
+
+			console.log('categories:', categories);
+
+			res.json(categories);
+		} catch (error) {
+			console.error('Database query error:', error);
+			next(error);
+		}
+	});
+
+	app.get('/data/admin/business_menu/:businessId', (req, res, next) => {
+		const businessId = parseInt(req.params.businessId);
+
+		console.log('req.params:', businessId);
+
+		new Promise((resolve, reject) => {
+			req.db.all(
+				'SELECT * FROM business_categories WHERE business_id = ?',
+				[businessId],
+				(error, categories) => {
+					if (error) {
+						reject(error);
+					} else {
+						resolve(categories);
+					}
+				}
+			);
+		})
+			.then((categories) => {
+				console.log('categories:', categories);
+				res.json(categories);
+			})
+			.catch((error) => {
+				console.error('Database query error:', error);
+				next(error);
+			});
+	});
+
+	// Select all categories of a specific business by business_id
+	app.get('/data/admin/category-by-business/:businessId', (req, res, next) => {
+		const businessId = req.params.businessId;
+		console.log('businessId:', businessId);
+		console.log('req.params:', req.params);
+
+		new Promise((resolve, reject) => {
+			req.db.all(
+				`SELECT categories.id as category_id, categories.category_name
+FROM business_categories
+JOIN categories ON business_categories.category_id = categories.id
+WHERE business_categories.business_id = ?`,
+				[businessId],
+				(err, result) => {
+					if (err) {
+						console.error('Database query error:', err);
+						reject(err);
+					} else {
+						console.log('Database query result:', result);
+						resolve(result);
+					}
+				}
+			);
+		})
+			.then((result) => {
+				if (result.length > 0) {
+					res.status(200).json(result);
+				} else {
+					res.status(404).json({ message: 'No categories found for this business ID' });
+				}
+			})
+			.catch((err) => {
+				console.error('Promise error:', err);
+				next(err);
+			});
 	});
 };
 
